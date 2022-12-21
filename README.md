@@ -1,7 +1,7 @@
 # CLIP-for-deformable-object-detection-demo
 =======
 See more in [Original Work](https://github.com/pals-ttic/adapting-CLIP)  
-This repository is based on that work and add train module to it.
+This repository is based on that work and adds training module to it.
 
 ## TODO:
 1.Heatmap aggregation in slic_vit.py  
