@@ -13,7 +13,7 @@ class ClipAdapter(nn.Module):
     def __init__(self, feature_len):
         super(ClipAdapter, self).__init__()
         self.feature_len = feature_len
-        self.mod = nn.Sequential(nn.Linear(feature_len,feature_len,bias=True),nn.ReLU(inplace=True),nn.Linear(feature_len,feature_len,bias=True))
+        self.mod = nn.Sequential(nn.Linear(feature_len,feature_len//4,bias=True),nn.ReLU(inplace=True),nn.Linear(feature_len//4,feature_len,bias=True),nn.ReLU(inplace=True))
         # self.alpha = torch.zeros(1).cuda()
         self.alpha = nn.Parameter(torch.FloatTensor([0.9]), requires_grad=True)
 
@@ -99,17 +99,18 @@ class SLICViT(nn.Module):
         
     def get_heatmap(self, im, text, normalize):
         masks, logits = self.get_mask_scores(im, text)
-        heatmap = torch.zeros_like(masks[0],dtype=float)
-        #heatmap.requires_grad_()
-        for i in range(len(masks)):
-            heatmap[masks[i]] = logits[i] # need to modify
+        heatmap = torch.exp((logits[:, None, None] * masks.float()).sum(0)) / (masks.float().sum(0) + 1e-8)
+        # heatmap = torch.zeros_like(masks[0],dtype=float) 
+        # #heatmap.requires_grad_()
+        # for i in range(len(masks)):
+        #     heatmap[masks[i]] = logits[i] # need to modify
 
-        heatmap = heatmap.exp() / self.temperature
-        #no aggregation
+        # heatmap = heatmap.exp() / self.temperature
+        # #no aggregation
 
-        if normalize:
-            max, min= heatmap.max(), heatmap.min()
-            heatmap = (heatmap- min)/(max-min+1e-8)
+        # if normalize:
+        #     max, min= heatmap.max(), heatmap.min()
+        #     heatmap = (heatmap- min)/(max-min+1e-8)
         return heatmap
     # def get_heatmap(self, im, text):
     #     masks, logits = self.get_mask_scores(im, text)
