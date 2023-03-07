@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import cv2
+from . import matched_bbox_iou
 
 class BruteForceBoxSearch():
     """Use pytorch to speed up. If matrix is too large, it may be out of memory.
@@ -52,6 +53,7 @@ class BruteForceBoxSearch():
 
     def area(self,x1,y1,x2,y2):
         return (y2-y1)*(x2-x1)
+    
     def set_lastarea(self,area):
         self.last = area
 
@@ -83,6 +85,28 @@ class BruteForceBoxSearch():
         box = box.cpu().numpy()
         return box
 
+# class BruteForceBoxSearch():
+#     """Use pytorch to speed up. If matrix is too large, it may be out of memory.
+#     """
+
+#     def __init__(self, downsample=8):
+#         self.downsample = downsample
+    
+#     def area(self,x1,y1,x2,y2):
+#         return (y2-y1)*(x2-x1)
+
+#     def __call__(self, matrix, target):
+#         h, w = matrix.shape[:2]
+#         matrix = torch.from_numpy(matrix).cuda()
+#         # get new size
+#         self.h = h // self.downsample
+#         self.w = w // self.downsample
+#         intervals = [[0, self.w-1], [0, self.h-1],
+#                      [0, self.w-1], [0, self.h-1]]
+        
+#         ious = matched_bbox_iou(intervals,)
+
+#         return box
 
 class SumAreaObjective():
     """f(x) = (sum inside x) - alpha * (normalized area of x)
@@ -132,13 +156,17 @@ class FractionAreaObjective():
     """f(x) = (fraction of sum inside x) - alpha * (normalized area of x)
     """
 
-    def __init__(self, alpha):
+    def __init__(self, alpha, target):
         self.alpha = alpha
+        self.beta = 0.8
+        self.target = target
+        self.compress_target = target
 
     def __call__(self, matrix):
         # precompute things
         self.matrix = matrix
         self.h, self.w = matrix.size(0), matrix.size(1)
+        print("call: ",self.h," ",self.w," ",self.target)
         # for normalizing area
         self.area = float(self.h * self.w)
         # assume matrix is all positive
@@ -146,17 +174,28 @@ class FractionAreaObjective():
         # pad the sums on top and left to deal with boundary cases
         self.sums = F.pad(self.sums, (1, 0, 1, 0))
         # get total sum for computing fraction
+        
+        self.compress_target = self.target.copy()
+        self.compress_target[:,::2] = self.compress_target[:,::2] * self.w / 224
+        self.compress_target[:,1::2] = self.compress_target[:,1::2] * self.h / 224
+        print("ct b: ",self.compress_target)
         self.total_sum = self.matrix.sum().item()
         return self
 
     def eval(self, boxes):
         frac = self._compute_frac(boxes)
         area = self._compute_area(boxes)
-        # print("frac: ",frac)
-        # print("area: ",area)
+        iou = self._compute_iou(boxes)
+        print("frac: ",frac)
+        print("area: ",area)
+        print("iou: ",iou, "argmax",iou[np.argmax(iou.cpu().numpy())],"boxes",boxes[0])
         # self.alpha = torch.mean(frac)/torch.mean(area) #modified
         print("device: frac:",area.device,frac.device)
-        return frac - self.alpha * area
+        return frac - self.alpha * area + self.beta * iou
+        #return iou
+    def _compute_iou(self, boxes):
+        print("ct: ",self.compress_target)
+        return matched_bbox_iou(boxes, torch.from_numpy(self.compress_target).cuda())
 
     def _compute_frac(self, boxes):
         # boxes is Nx4, each is [x1, y1, x2, y2]

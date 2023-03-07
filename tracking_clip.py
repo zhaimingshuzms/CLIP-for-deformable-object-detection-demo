@@ -18,7 +18,7 @@ if __name__ == '__main__':
     }
     model = SLICViT(**args).cuda()
     
-    name = 'David'
+    name = 'DragonBaby'
     try:
         bboxes = np.loadtxt(f'data/otb/{name}/groundtruth_rect.txt')
     except:
@@ -43,10 +43,12 @@ if __name__ == '__main__':
     featurelist = []
     heatmaplist = []
     target_feature = model.generate_feature(rgbs[0],bboxes[0])
+    last = bboxes[0].astype(int)
     for i in range(len(rgbs)):
-        bbox, _ = model(rgbs[i], target_feature, featurelist, heatmaplist)
+        bbox, _ = model(rgbs[i], target_feature, featurelist, heatmaplist, last)
         if len(bbox) > 0:
             bbox = bbox[0].astype(int)
+            last = bbox
             cv2.rectangle(rgbs[i], (bbox[0], bbox[1]), (bbox[2], bbox[3]), (0, 0, 255), 1)
             cv2.imshow("img", rgbs[i][..., ::-1])
             cv2.waitKey()

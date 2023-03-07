@@ -155,13 +155,13 @@ class SLICViT(nn.Module):
         heatmap[np.logical_not(mask_valid)] = 0.
         return heatmap, feature
 
-    def box_from_heatmap(self, heatmap):
+    def box_from_heatmap(self, heatmap, last):
         alpha = self.alpha
         # get accumulated sum map for the objective
         sum_map = heatmap.copy()
         sum_map /= sum_map.sum() + 1e-8
         sum_map -= alpha / sum_map.shape[0] / sum_map.shape[1]
-        objective = FractionAreaObjective(alpha=alpha)
+        objective = FractionAreaObjective(alpha=alpha, target=last)
         box = self.bf(heatmap, objective)
         # cf = CV2BoxSearch()
         # box = cf(heatmap)
@@ -189,7 +189,7 @@ class SLICViT(nn.Module):
             memory = memory + per[j] * heatmaplist[j]
         return self.mix * memory + (1-self.mix) * heatmap
 
-    def forward(self, im, target_feature, feature_memory, heatmap_memory, **args):
+    def forward(self, im, target_feature, feature_memory, heatmap_memory, last, **args):
         # temporary override paramters in init
         _args = {key: getattr(self, key) for key in args}
         for key in args:
@@ -203,7 +203,11 @@ class SLICViT(nn.Module):
         feature_memory.append(feature)
         cv2.imshow('heatmap', heatmap)
         
-        bbox = self.box_from_heatmap(heatmap)
+        last = last.reshape(1, -1)
+        last[:, ::2] = last[:, ::2] * 224 / w
+        last[:, 1::2] = last[:, 1::2] * 224 / h
+        print(last)
+        bbox = self.box_from_heatmap(heatmap, last)
         bbox[:, ::2] = bbox[:, ::2] * w / 224.
         bbox[:, 1::2] = bbox[:, 1::2] * h / 224.
         # restore paramters
