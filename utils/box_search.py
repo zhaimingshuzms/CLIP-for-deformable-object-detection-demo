@@ -153,7 +153,8 @@ class SumAreaObjective():
 
 
 class FractionAreaObjective():
-    """f(x) = (fraction of sum inside x) - alpha * (normalized area of x)
+    """
+    f(x) = (fraction of sum inside x) - alpha * (normalized area of x) + beta * iou
     """
 
     def __init__(self, alpha, target):
@@ -188,9 +189,9 @@ class FractionAreaObjective():
         iou = self._compute_iou(boxes)
         print("frac: ",frac)
         print("area: ",area)
-        print("iou: ",iou, "argmax",iou[np.argmax(iou.cpu().numpy())],"boxes",boxes[0])
+        print("iou: ",iou)
         # self.alpha = torch.mean(frac)/torch.mean(area) #modified
-        print("device: frac:",area.device,frac.device)
+        # print("device: frac:",area.device,frac.device)
         return frac - self.alpha * area + self.beta * iou
         #return iou
     def _compute_iou(self, boxes):

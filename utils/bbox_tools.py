@@ -35,5 +35,7 @@ def matched_bbox_iou(bbox1, bbox2):
     wh = (rb - lt).clamp(min=0)  # [N,2]
     inter = wh[:, 0] * wh[:, 1]  # [N]
     iou = inter / (area1 + area2 - inter)  # [N]
+    # return iou
     # design a function to describe the bbox ,e.g. relu
-    return iou
+    standard_iou = torch.log(iou)
+    return standard_iou

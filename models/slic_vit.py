@@ -201,7 +201,7 @@ class SLICViT(nn.Module):
             heatmap = self.heatmap_aggregation(heatmap, feature_memory, heatmap_memory, feature)
         heatmap_memory.append(heatmap)
         feature_memory.append(feature)
-        cv2.imshow('heatmap', heatmap)
+        #cv2.imshow('heatmap', heatmap)
         
         last = last.reshape(1, -1)
         last[:, ::2] = last[:, ::2] * 224 / w
